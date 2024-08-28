@@ -1,0 +1,48 @@
+### get users
+GET localhost:3001/api/users
+
+### get blogs
+GET localhost:3001/api/blogs
+
+
+### create blogs
+POST localhost:3001/api/blogs
+Content-Type: application/json
+
+{ 
+  "title": "React patterns",
+  "author": "Michael Chan",
+  "url": "https://reactpatterns.com/",
+  "userId": "66cb7dc89f42af6efbe3cf75"
+} 
+
+### 
+POST localhost:3001/api/blogs
+Content-Type: application/json
+
+{
+  "title": "Go To Statement Considered Harmful",
+  "author": "Edsger W. Dijkstra",
+  "url": "http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.htm",
+  "userId": "66cb7dc89f42af6efbe3cf75"
+}
+
+### user login
+POST localhost:3001/api/login
+Content-Type: application/json
+
+{
+  "username": "iury",
+  "password": "senha123"
+}
+
+### user creation
+
+POST localhost:3001/api/users
+Content-Type: application/json
+
+{
+  "username": "iury",
+  "name": "iury",
+  "password": "senha123"
+}
