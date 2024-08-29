@@ -11,18 +11,17 @@ blogsRouter.get('/', async (request, response) => {
 
 blogsRouter.post('/', async (request, response) => {
   const body = request.body;
-  const token = request.token;
-  const decodedToken = jwt.verify(token, process.env.SECRET);
+  const user = request.user;
 
-  if(!decodedToken.id) {
-    response.status(401).json({ error: "token invalid"})
+
+  if(!user) {
+    response.status(400).json({ error: "User not found!"})
     return;
   }
 
-  const user = await User.findById(decodedToken.id);
-  if(!user) {
-    response.status(400).json({ error: "user could not be found!"});
-    return; 
+  if(!(body.title) || !(body.author)) {
+    response.status(400).json({ error: "title or author missing or already registered"});
+    return;
   }
 
   const blog = new Blog({
@@ -33,10 +32,6 @@ blogsRouter.post('/', async (request, response) => {
   });
 
 
-  if(!(blog.title) || !(blog.author)) {
-    response.status(400).send();
-    return;
-  }
 
   const savedBlog = await blog.save();
   user.blogs = user.blogs.concat(savedBlog._id);
@@ -48,10 +43,7 @@ blogsRouter.post('/', async (request, response) => {
 
 blogsRouter.delete('/:id', async (request, response) => {
   const id = request.params.id;
-  const token = request.token;
-  const decodedToken = jwt.verify(token, process.env.SECRET);
-
-  const user = await User.findById(decodedToken.id);
+  const user = request.user;
 
   if(!user) {
     response.status(404).json({ error: "found no user with this id!"});

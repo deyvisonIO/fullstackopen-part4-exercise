@@ -54,6 +54,30 @@ describe("When there's initialy one user in the database", () => {
   })
 
   test("creation fails if password is less than 3 characters", async () => {
-    await api.post("/api/users").send({ username: "rootey", password: "ab" }).expect(400).expect("Content-Type", /application\/json/ );
+    await api.post("/api/users").send({ username: "rootey", password: "ab" }).expect(400).expect("Content-Type", /application\/json/);
+  })
+
+
+  describe("login in with user", () => {
+    test("succeeds if user exists", async () => {
+      const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" }).expect(200).expect("Content-Type", /application\/json/);
+
+      const user = response.body;
+
+      assert.strictEqual(user.hasOwnProperty("token"), true); 
+      assert.strictEqual(user.hasOwnProperty("username"), true); 
+    })
+
+
+    test("fails if user doesn't exist", async () => {
+      const response = await api.post("/api/login").send({ username: "randomuser", password: "randompassword" }).expect(401).expect("Content-Type", /application\/json/);
+
+      const user = response.body;
+
+      assert.strictEqual(user.hasOwnProperty("error"), true); 
+      assert.strictEqual(user.error, "invalid username or password"); 
+
+    })
   })
 });
+

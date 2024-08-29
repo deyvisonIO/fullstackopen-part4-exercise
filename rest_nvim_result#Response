@@ -1,0 +1,7 @@
+### create blogs without userId
+POST localhost:3001/api/blogs
+HTTP/1.1 201 Created
+
+# @_RES
+{"title":"React patterns","author":"Michael Chan","url":"https://reactpatterns.com/","likes":0,"user":"66cf7a3504d539ced90e3fa8","id":"66d097f2aa77a5e8517942c4"}
+# @_END

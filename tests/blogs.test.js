@@ -1,10 +1,12 @@
-const { describe, test, beforeEach, after } = require("node:test");
+const { describe, test, beforeEach, before, after } = require("node:test");
 const assert = require("node:assert")
 const mongoose = require("mongoose")
+const bcrypt = require("bcrypt")
 const { MONGODB_URL } = require("../utils/config") 
 const app = require("../app")
 const supertest = require("supertest")
 const Blog = require("../models/blog") 
+const User = require("../models/user") 
 
 const api = supertest(app);
 
@@ -50,12 +52,24 @@ const initialBlogs = [
 
 mongoose.connect(MONGODB_URL);
 
+before(async () => {
+  await User.deleteMany({});
+
+  const passwordHash = await bcrypt.hash("rootpassword", 10);
+  const user = new User({username: "root", passwordHash});
+
+  await user.save();
+})
+
 beforeEach(async () => {
+  const user = await User.findOne({});
+
   const blogs = initialBlogs.map(blog => new Blog({
     title: blog.title,
     author: blog.author,
     url: blog.url,
-    likes: blog.likes
+    likes: blog.likes,
+    user: user._id.toString()
   }));
 
   await Blog.deleteMany({});
@@ -82,6 +96,9 @@ describe("getting a blog from api", () => {
 
 describe("creation of a blog", () => {
   test("returns status 201 if created correctly and updates blogs on database", async () => {
+    const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" });
+
+    const user = response.body;
     const blogToBeAdded = {
           title: "this is a test",
           author: "test author",
@@ -89,22 +106,48 @@ describe("creation of a blog", () => {
           likes: 5,
     }
 
-    await api.post("/api/blogs").send(blogToBeAdded).expect(201).expect("Content-Type", /application\/json/);
-    const getResponse = await api.get("/api/blogs");
+    await api.post("/api/blogs").set("Authorization", "Bearer " + user.token).send(blogToBeAdded).expect(201).expect("Content-Type", /application\/json/);
 
+    const getResponse = await api.get("/api/blogs");
     const blogs = getResponse.body;
 
     assert.deepStrictEqual(blogs.length, 7);
   })
 
+
+  test("returns status 400 if created without token", async () => {
+    const blogToBeAdded = {
+          title: "this is a test",
+          author: "test author",
+          url: "test url",
+          likes: 5,
+    }
+
+    const response = await api.post("/api/blogs").send(blogToBeAdded).expect(400).expect("Content-Type", /application\/json/);
+
+    const body = response.body;
+
+    assert.strictEqual(body.hasOwnProperty("error"), true);
+    assert.strictEqual(body.error, "User not found!"); 
+
+    const getResponse = await api.get("/api/blogs");
+
+    const blogs = getResponse.body;
+
+    assert.deepStrictEqual(blogs.length, 6);
+  })
+
   test("blog likes default to 0 if not specified", async () => {
+    const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" });
+    const user = response.body;
+
     const blogToBeAdded = {
           title: "this is a test",
           author: "test author",
           url: "test url",
     }
 
-    await api.post("/api/blogs").send(blogToBeAdded).expect(201).expect("Content-Type", /application\/json/);
+    await api.post("/api/blogs").set("Authorization", "Bearer " + user.token).send(blogToBeAdded).expect(201).expect("Content-Type", /application\/json/);
     const getResponse = await api.get("/api/blogs");
 
     const blogs = getResponse.body;
@@ -114,33 +157,41 @@ describe("creation of a blog", () => {
   })
 
   test("api returns 400 code if blog post doesn't have a title", async () => {
+    const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" });
+    const user = response.body;
+
     const blogToBeAdded = {
           author: "test author",
           url: "test url",
           likes: 5,
     }
 
-    await api.post("/api/blogs").send(blogToBeAdded).expect(400);
+    await api.post("/api/blogs").set("Authorization", "Bearer " + user.token).send(blogToBeAdded).expect(400);
   })
 
   test("api returns 400 code if blog post doesn't have a author", async () => {
+    const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" });
+    const user = response.body;
     const blogToBeAdded = {
           title: "this is a test",
           url: "test url",
           likes: 5,
     }
 
-    await api.post("/api/blogs").send(blogToBeAdded).expect(400);
+    await api.post("/api/blogs").set("Authorization", "Bearer " + user.token).send(blogToBeAdded).expect(400);
   })
 
 })
 
 describe("deletion of a blog", () => {
   test("succeeds with status 204 if id is valid", async () => {
+    const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" });
+    const user = response.body;
+
     const blog = await Blog.findOne();
     const blogId = blog.toJSON().id
 
-    await api.delete("/api/blogs/" + blogId).expect(204);
+    await api.delete("/api/blogs/" + blogId).set("Authorization", "Bearer " + user.token).expect(204);
     const blogs = await Blog.find({}); 
     
     assert.strictEqual(blogs.length, 5);
@@ -149,11 +200,14 @@ describe("deletion of a blog", () => {
 
 describe("update of a blog", () => {
   test("succeeds with status 204 if id is valid", async () => {
+    const response = await api.post("/api/login").send({ username: "root", password: "rootpassword" });
+    const user = response.body;
+
     const blog = await Blog.findOne();
     const blogId = blog.toJSON().id;
     const numberOfLikes = 42059;
 
-    await api.put("/api/blogs/" + blogId).send({ likes: numberOfLikes }).expect(204);
+    await api.put("/api/blogs/" + blogId).set("Authorization", "Bearer " + user.token).send({ likes: numberOfLikes }).expect(204);
     const updatedBlog = await Blog.findById(blogId);
     
     assert.strictEqual(updatedBlog.likes, numberOfLikes);
