@@ -45,11 +45,11 @@ blogsRouter.delete('/:id', async (request, response) => {
   const id = request.params.id;
   const user = request.user;
 
+
   if(!user) {
     response.status(404).json({ error: "found no user with this id!"});
     return;
   }
-
 
   if(!id) {
     response.status(400).json({ error: "provide an blog id to delete"});
@@ -58,28 +58,45 @@ blogsRouter.delete('/:id', async (request, response) => {
 
   const blog = await Blog.findById(id);
 
-  if(blog.user.toString() === user._id.toString()) {
-    const result = await Blog.findByIdAndDelete(id);
-    response.status(204).json(result);
+  if(!blog) {
+    response.status(400).json({ error: "blog not found!"});
     return;
   }
 
+  if(blog.user.toString() !== user._id.toString()) {
+    response.status(400).json({ error: "user doesn't own blog post"});
+    return;
+  }
 
-  response.status(204).json(result)
+  const result = await Blog.findByIdAndDelete(id);
+  response.status(200).json(result);
 })
 
 blogsRouter.put('/:id', async (request, response) => {
   const id = request.params.id;
   const likes = request.body.likes;
+  const user = request.user;
 
-  if(!id || !likes) {
-    response.status(400).send();
+
+  if(!user) {
+    response.status(404).json({ error: "found no user with this id"});
+    return;
+  }
+
+  if(!id) {
+    response.status(400).json({ error: "provide an id"});
+    return;
+  }
+
+  if(!likes) {
+    response.status(400).json({ error: "provide an likes"});
     return;
   }
 
   const result = await Blog.findByIdAndUpdate(id, { likes }, { new: true});
+  console.log(result)
 
-  response.status(204).json(result)
+  response.status(200).json(result)
 })
 
 module.exports = blogsRouter
