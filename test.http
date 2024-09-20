@@ -69,3 +69,8 @@ Content-Type: application/json
   "name": "iury",
   "password": "senha123"
 }
+
+
+### test reset
+
+GET localhost:3001/api/testing/reset
